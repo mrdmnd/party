@@ -23,6 +23,15 @@ This script produces a labelling for each student starting from a random seed, t
 After convergence or hitting an iteration limit, the script terminates and publishes the labelling for each student.
 
 ## Usage
+
+### Dependencies
+
+Knightbook scraper requires the following:
+- Selenium
+- BeautifulSoup
+- Chrome WebDriver (throw the binary from https://chromedriver.chromium.org/downloads onto your PATH somewhere)
+- A preconfigured OKTA account w/ SMS 2fa configured.
+
 ### partitioner.py
 `partitioner` expects to be called from the command line with a single argument - a path to a json file containing a dictionary mapping strings (class names) to lists of strings (students in that class).
 

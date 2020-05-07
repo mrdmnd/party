@@ -1,6 +1,7 @@
 ''' A module designed to scrape student information from Menlo's Knightbook. '''
 ''' Produces a file "class_to_student_mapping.json" '''
 ''' Used as input for partitioner program. '''
+''' This file is really kludgy, meant as a one-off. '''
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys

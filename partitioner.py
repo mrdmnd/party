@@ -96,14 +96,6 @@ class State(object):
         self.Relabel(random.choice(majority_label_students), minority_label)
 
     def GenerateGraphviz(self):
-        classroom_subgraph_innertext = ";\n\t".join(('"{0}"'.format(x) for x in self.class_to_student_map.keys()))
-        subgraph_classes_string = """
-subgraph {{
-  {0}
-}}""".format(classroom_subgraph_innertext)
-
-
-
         student_node_format_string = """"{0}" [shape=circle, style=filled, fillcolor="{1} 1.000 1.000"]\n"""
         node_colors = ""
         for (student, label) in self.student_labels.items():
@@ -115,14 +107,14 @@ subgraph {{
             for student_name in student_list:
                 edge_connectivity += edge_connectivity_format_string.format(student_name, class_name)
 
-        output = """graph test {{
+        output = """
+graph test {{
   overlap=false
   edge [style="", weight=1, len=1]
 {0}
 {1}
-{2}
 }}
-        """.format(subgraph_classes_string, node_colors, edge_connectivity)
+        """.format(node_colors, edge_connectivity)
         with open("output.dot", 'w') as f:
             f.write(output)
         return
@@ -130,12 +122,11 @@ subgraph {{
 def main(path):
     s = State(path)
     imbalance = s.CumulativeImbalance()
-    for iterations in range(5):
+    for iterations in range(100):
         print(imbalance)
         s.IterationStep()
         imbalance = s.CumulativeImbalance()
     s.GenerateGraphviz()
-
 
 if __name__ == '__main__':
     main(sys.argv[1])
