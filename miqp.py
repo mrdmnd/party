@@ -1,9 +1,6 @@
 import sys
 import csv
 import cvxpy as cp
-#import mosek
-
-# CONVENTION: blue is zero, gold is one
 
 class Student:
     def __init__(self, record_id, first, last, gender, grade):
@@ -14,7 +11,8 @@ class Student:
         self.grade = grade
         self.color_variable = cp.Variable(boolean=True)
     def __repr__(self):
-        return "{self.record_id}\t{self.color_variable.value}".format(self=self)
+        color_string = "GOLD" if self.color_variable.value == 1.0 else "BLUE"
+        return "{self.record_id}\t{self.first}\t{self.last}\t{self.gender}\t{self.grade}\t{color_string}".format(self=self, color_string=color_string)
 
 class Course:
     def __init__(self, course_id, course_name):
