@@ -53,6 +53,7 @@ class Course:
         print("_|Blue\t|Gold\t|")
         print("M|{0}\t|{1}\t|".format(blue_male, gold_male))
         print("F|{0}\t|{1}\t|".format(blue_female, gold_female))
+        return (blue_male, gold_male, blue_female, gold_female)
 
 # Returns a newly-constructed dictionary of Student objects, keyed by record_id field.
 def LoadStudents(students_filepath):
@@ -131,6 +132,40 @@ def BuildConstraints(siblings, students):
             constraints.append( student.color_variable == sib_constraint)
     return constraints
 
+def PrintCourseStatistics(courses):
+    print("Class Statistics: ")
+    accum = [0, 0, 0, 0]
+    for course in courses.values():
+        stats = course.print_stats()
+        accum[0] += stats[0]
+        accum[1] += stats[1]
+        accum[2] += stats[2]
+        accum[3] += stats[3]
+    print("Overall (by assignments)")
+    print("  _|Blue\t|Gold\t|Sum\t")
+    print("  M|{0}\t|{1}\t|{2}\t".format(accum[0], accum[1], accum[0]+accum[1]))
+    print("  F|{0}\t|{1}\t|{2}\t".format(accum[2], accum[3], accum[2]+accum[3]))
+    print("Sum|{0}\t|{1}\t|{2}\t".format(accum[0]+accum[2], accum[1]+accum[3], sum(accum)))
+
+def PrintStudentStatistics(students):
+    accum = [0, 0, 0, 0]
+    for student in students.values():
+        if student.gender == "Male" and student.color_variable.value == 0.0:
+            accum[0] += 1
+        if student.gender == "Male" and student.color_variable.value == 1.0:
+            accum[1] += 1
+        if student.gender == "Female" and student.color_variable.value == 0.0:
+            accum[2] += 1
+        if student.gender == "Female" and student.color_variable.value == 1.0:
+            accum[3] += 1
+    print("Overall (by student count)")
+    print("  _|Blue\t|Gold\t|Sum\t")
+    print("  M|{0}\t|{1}\t|{2}\t".format(accum[0], accum[1], accum[0]+accum[1]))
+    print("  F|{0}\t|{1}\t|{2}\t".format(accum[2], accum[3], accum[2]+accum[3]))
+    print("Sum|{0}\t|{1}\t|{2}\t".format(accum[0]+accum[2], accum[1]+accum[3], sum(accum)))
+
+
+
 
 def main(students_filepath, siblings_filepath, schedules_filepath):
     students = LoadStudents(students_filepath)
@@ -141,12 +176,11 @@ def main(students_filepath, siblings_filepath, schedules_filepath):
     constraints = BuildConstraints(siblings, students)
 
     problem = cp.Problem(objective, constraints)
-    problem.solve(solver=cp.GUROBI, verbose=True, Threads=4, TimeLimit=30)
+    problem.solve(solver=cp.GUROBI, verbose=True, Threads=4, TimeLimit=60)
+    PrintCourseStatistics(courses)
+    PrintStudentStatistics(students)
     print("Status: ", problem.status)
     print("Objective Value: ", problem.value)
-    print("Class Statistics: ")
-    for course in courses.values():
-        course.print_stats()
     print("Assignments: ")
     for student in students.values():
         print(student)
