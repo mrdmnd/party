@@ -2,46 +2,79 @@
 A library to assist registrars in partitioning students into groups for socially-distanced learning.
 
 ## Problem Motivation
-Exploration: what happens if we go back to school in the fall, but we are required to have fewer students in
-our classrooms at any given time?
+I am a computer science teacher at a private highschool in Northern California.
+We are being asked to prepare our students for a "partiioned" schedule when we return to school in the fall.
 
-One potential model for implementing this policy choice is the "partitioned" schedule - assign each student a label or color ("1, 2, 3" or "blue, grey, gold" - whatever) - and on each given day or week, students with a subset of the labels are allowed to visit school in person. For instance, suppose you chose two labels (RED and BLUE) and declared alternating weeks as RED or BLUE weeks. This would (on average) reduce the effective class size by a factor of two. However, it has some rawbacks - namely, students in different labels would never get a chance to interact in person.
+We intend to assign to each student one of two possible labels or colors ("blue and gold" for reference here) - and on each given week, only the students from one group are allowed to visit school in person. We're looking for an assignment of these colors to each student in a way that minimizes an objective function - in our school's case, we care about minimizing two things: the color-variance inside a class, and the gender-variance within these color groups.
 
-Consider a slightly modified approach that allows students some cross-interaction between groups: we label students into one of THREE labels (RED, BLUE, GREEN) and then rotate through our weeks as (RED+BLUE, BLUE+GREEN, GREEN+RED) - this means that every group would get to interact with members of the other groups at some point, and our "student density" is on average 2/3rds (2 groups per period, 3 total groups).
+## Goals
+Suppose you had a class of 15 students, and you randomly assign labels. You might end up with six students in one color, and nine in another. This is less optimal than a class with eight students in one color and seven in another. Because we're striving for socially distanced learning, it is our goal to ensure that no class accidentally has a large amount of students from one label present on any given day. That is, we're trying to minimize the "imbalance" in a classroom across different labels - this is minimized perfectly when the counts of students for each label is equal, or when the sample variance of the label counts is zero. 
 
-In general, if we partition students into K groups and allow N of those groups to be physically present in an given period, our density should average N / K.
+Additionally, we'd like to ensure that our classes are as gender balanced as possible within these blue and gold labels. 
 
-In practice, it will be problematic for students and parents to remember schedules with more than say, three labels. I suggest that if we move to this model, a reasonably good choice is K = 3 or 4 and N = 2, as described above.
+Finally, we'd like to constraints students who have siblings at the school such that all students in one family share the same color, to minimize logistics overhead for the family.
 
-## Analysis
-Although the "average" argument above is a good one under the assumptions of the central limit theorem and random label assignment, I think we can do better. Because we're striving for socially distanced learning, it is our goal to ensure that no class accidentally has a large amount of students from one label present on any given day. That is, we're trying to minimize the "imbalance" in a classroom across different labels - this is minimized perfectly when the counts of students for each label is equal, or when the sample variance of the label counts is zero. Consider a classroom of 24 students. A "perfect" balance across three label classes would be [8, 8, 8]. A very imbalanced partition would look like [4, 14, 6].
+Instead of relying on random labelings to get good partitions, we can use some extra information: a mapping from students-to-classes, as well as a sibling collection.
 
- Instead of relying on random labelings to get good partitions, we can use extra information: a mapping from students-to-classes. I wrote some code to scrape this mapping from the Knightbook (see knightbook.py), but ultimately, as long as you can provide a mapping from a string (class name) to lists of strings (students in the class), you can use the tools in partitioner.py.
+## Model
+### Objective Function
+We model this problem as a mixed-integer quadratic program.
 
-This script produces a labelling for each student starting from a random seed, then iteratively attempts to improve it by identifying the class with the largest variance (most imbalanced class) and swapping an arbitrary student from the majority label in that class to a minority label. This isn't guaranteed to be globally optimal, because it will likely modify some other class, but as a greedy algorithm it's pretty good.
+The objective function here is a weighted combination of two terms: a "color-variance" term and a "gender-variance" term.
 
-After convergence or hitting an iteration limit, the script terminates and publishes the labelling for each student.
+By default, the weight on the color-variance term is 1.0 and the gender-variance term is 0.5.
 
-## Usage
+The color-variance term is summed across all classes. For each class, we compute the "optimal split" as having half the students in the class be blue and half be gold. 
 
-### Dependencies
+The gender-variance term is summsed across all class/color pairs. For each class/color pair we compute the "optimal split" as half the students in the blue section be male and half the students in the blue section be female - same for gold.
 
-Knightbook scraper requires the following:
-- Selenium
-- BeautifulSoup
-- Chrome WebDriver (throw the binary from https://chromedriver.chromium.org/downloads onto your PATH somewhere)
-- A preconfigured OKTA account w/ SMS 2fa configured.
+Specifically, our variance terms look like the following:
 
-### partitioner.py
-`partitioner` expects to be called from the command line with a single argument - a path to a json file containing a dictionary mapping strings (class names) to lists of strings (students in that class).
+Color-variance: `(optimal_people_in_gold - num_gold)^2`
 
-I have not included such a file in this repository for privacy reasons. Such a file can be generated for Menlo School by using the included KnightBook scraper, though.
+Gender-variance: `(optimal_females_in_gold_split - num_gold_females)^2 + (optimal_females_in_blue_split - num_blue_females)^2`
 
-Partitioner implements the above-described algorithm and publishes the mapping as a graphviz file.
+(note: the color-variance term is invariant on which color you choose, and the gender-variance term is invariant on which gender you choose - these were chosen arbitrarily).
 
-To compile the graph from the outputted dot file, you can run
-    
-    sfdp -v -Tpng output.dot > output.png
+### Constraints
+The constraints in our problem are "sibling constraints" - we only require that siblings share the same color.
+We encode this as a special "free variable" set for each family, `F_i`. For each student `S_n` in that family / set of siblings, we constrain
 
-### knightbook.py
-This script uses Selenium to automate a headless chrome browser, and click through each class on knightbook one-by-one to identify which students are present in that class. It stores this information to a dictionary, and then writes the dictionary out to a .json file. It's incredibly kludgy and was written in two hours after a couple of beers. Please no judgerino. 
+`S_n = F_i`
+
+For instance, in a family with three siblings, we have three constraints:
+`S_1 = F_1`
+`S_2 = F_1`
+`S_3 = F_1`
+
+In practice, most students do not have siblings, and of the ones who do, their families are small (not more than three or four members) so this approach does not add a lot of constraints or variables.
+
+We require all variables to be boolean-valued.
+
+## Running the Partitioner
+### Dependencies / Installation
+`party` depends on a commercial solver known as Gurobi. Obtaining an academic license is fairly straight forward for qualifying teachers or educators.
+`party` also depends on cvxpy, a nice interface to various LP/QP solvers.
+
+To install our dependencies, download gurobi's installer and set your license up following their instructions (the grbkey thing...)
+Then start a new virtual environment:
+
+`python3 -m venv ./env`
+
+Activate the virtual environment:
+
+`. env/bin/activate`
+
+Install our first dependency with pip:
+
+`pip install cvxpy`
+
+Install our second dependency manually, with setup.py file. On my machine, the install directory for Gurobi was `/Library/gurobi/mac64`.
+
+You'll want to navigate there (still inside of the virtualenv!) and run `sudo python setup.py install`.
+
+Test things out: open a python shell and check that `import cvxpy` and `import gurobipy` both work.
+
+## Execution
+Call `party.py` with the three input files (schedules.csv, siblings.csv, and students.csv)
+TODO(mrdmnd): make this more flexible - for now this is completely useless to other educators because our data format is weird.

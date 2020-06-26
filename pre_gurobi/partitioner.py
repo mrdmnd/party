@@ -6,7 +6,7 @@ from collections import defaultdict
 import statistics
 import random
 
-NUM_GROUPS = 3
+NUM_GROUPS = 2
 
 # Our goal is to minimize total "imbalance" across all classes in the dataset.
 # Suppose a class has S students with labels [a_1, a_2, ... a_S].
@@ -122,7 +122,7 @@ graph test {{
 def main(path):
     s = State(path)
     imbalance = s.CumulativeImbalance()
-    for iterations in range(100):
+    for iterations in range(200):
         print(imbalance)
         s.IterationStep()
         imbalance = s.CumulativeImbalance()

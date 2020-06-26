@@ -53,7 +53,7 @@ for index, link in enumerate(class_links):
     # data-value is unique "key" for class - we append class name to it for readability.
     key = link.get_attribute("data-value") + " - " + link.get_attribute("data-classname")
     for broken_class in blacklist:
-        if (link.get_attribute("data-classname").contains(broken_class)):
+        if (broken_class in link.get_attribute("data-classname")):
             print("Skipping blacklisted class: " + key)
             continue
 
